@@ -11,7 +11,7 @@ Low-level R library bindings
 
 ## Installation - Rust
 
-Extendr is available on [crates.io](https://crates.io/crates/extendr-api).
+ExtendR is available on [crates.io](https://crates.io/crates/extendr-api).
 
 Simply add this line to the `[dependencies]` section of a rust crate.
 You will then be able to call R code from Rust.
@@ -20,6 +20,7 @@ You will then be able to call R code from Rust.
 [dependencies]
 extendr-api = "0.1.4"
 ```
+
 ## Installation - R
 
 For now, copy one of the examples in `examples/R`. An R package will
@@ -36,7 +37,7 @@ The following code illustrates a simple structure trait
 which is written in Rust. The data is defined in the `struct`
 declaration and the methods in the `impl`.
 
-```
+```rust
 use extendr_api::*;
 
 struct Person {
@@ -91,19 +92,19 @@ free. The ultimate goal is to allow the wrapping of existing
 Rust libraries without markup, but in the meantime, the markup
 is as light as possible.
 
-```
+```rust
 #[extendr]
 pub fn my_sum(v: &[f64]) -> f64 {
     v.iter().sum()
 }
 ```
 
-You can interact in more detail with R objects using the RObj
+You can interact in more detail with R objects using the `RObj`
 type which wraps the native R object type. This supports a large
 subset of the R internals functions, but wrapped to prevent
 accidental segfaults and failures.
 
-```
+```default
 ## extendr roadmap
 
 ### Basic
@@ -136,13 +137,12 @@ There are two scripts in the root on the repo:
 
 Change and commit the version number.
 
-```
+```bash
 ./bump.sh new.version.number
 ```
 
 Push and publish the crate.
 
-```
+```bash
 ./publish.sh
 ```
-
