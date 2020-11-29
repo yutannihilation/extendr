@@ -3,7 +3,7 @@ name: Documents
 on:
   push:
     branches:
-      - master
+      - ci/deploy-dev-docs-test
 
 jobs:
   docs:
