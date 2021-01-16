@@ -44,9 +44,7 @@ pub fn start_r() {
             // Maybe 8MB is a bit small.
             // eprintln!("R_CStackLimit={:016x}", R_CStackLimit);
 
-            if cfg!(not(target_os = "windows")) {
-                R_CStackLimit = usize::max_value();
-            }
+            R_CStackLimit = usize::max_value();
 
             setup_Rmainloop();
         }
