@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - test/*
   pull_request:
     branches:
       - main
@@ -27,19 +28,6 @@ jobs:
           # - {os: windows-latest, r: 'release', rust-version: 'nightly-msvc'}
           # - {os: windows-latest, r: 'devel', rust-version: 'stable-msvc'}
           # - {os: windows-latest, r: 'oldrel', rust-version: 'stable-msvc'}
-
-          - {os: macOS-latest,   r: 'release', rust-version: 'stable'}
-          # - {os: macOS-latest,   r: 'release', rust-version: 'nightly'}
-          # - {os: macOS-latest,   r: 'devel', rust-version: 'stable'}
-          # - {os: macOS-latest,   r: 'oldrel', rust-version: 'stable'}
-
-          - {os: ubuntu-20.04,   r: 'release', rust-version: 'stable', rspm: "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"}
-          - {os: ubuntu-20.04,   r: 'release', rust-version: 'nightly', rspm: "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"}
-          # R-devel requires LD_LIBRARY_PATH
-          - {os: ubuntu-20.04,   r: 'devel',   rust-version: 'stable', rspm: "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"}   
-          - {os: ubuntu-20.04,   r: 'oldrel',   rust-version: 'stable', rspm: "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"}   
-
-
 
     env:
       R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
@@ -135,52 +123,17 @@ jobs:
       - name: Run tests
         run: |
           foreach($target in ($env:BUILD_TARGETS).Split(',')) {
-            echo "::group::Test for $target target"
-            cargo test $(if($target -ne 'default') {"--target=$target"} ) -- --nocapture
-            echo "::endgroup::"
-            
-            if (!$?) { 
-              echo "::error::Test for $target target" ;
-              throw "Last exit code $LASTEXITCODE"
+            foreach($i in 1..1000) {
+              echo "::group::Test for $target target (attempt $i)"
+              cargo test $(if($target -ne 'default') {"--target=$target"} ) -- --nocapture
+              echo "::endgroup::"
+              
+              if (!$?) { 
+                echo "::error::Test for $target target" ;
+                throw "Last exit code $LASTEXITCODE"
+              }
             }
           }
-
-
-      - name: Query dependencies for integration testing
-        run: |
-          install.packages('remotes')
-          saveRDS(remotes::dev_package_deps(pkgdir = "tests/extendrtests", dependencies = TRUE), ".github/depends.Rds", version = 2)
-          writeLines(sprintf("R-%i.%i", getRversion()$major, getRversion()$minor), ".github/R-version")
-        shell: Rscript {0}
-
-      - name: Cache installed R packages
-        uses: actions/cache@v2
-        with:
-          path: ${{ env.R_LIBS_USER }}
-          key: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-${{ hashFiles('.github/depends.Rds') }}
-          restore-keys: ${{ runner.os }}-${{ hashFiles('.github/R-version') }}-1-
-
-      - name: Install R dependencies for integration testing
-        run: |
-          remotes::install_deps(pkgdir = "tests/extendrtests", dependencies = TRUE)
-          remotes::install_cran("rcmdcheck")
-        shell: Rscript {0}
-        
-      # Windows: modified PATH will launch 32-bit Rscript if the build targets only i686/i386, so no conflict will arise
-      # Rust pseudo multi-targeting: R CMD CHECK receives an extra argument '--no-multiarch' if BUILD_TARGETS is not 'default' and does not contain any commas
-      - name: Run R integration tests
-        id: r_integration_tests
-        env:
-          _R_CHECK_CRAN_INCOMING_REMOTE_: false
-        run: rcmdcheck::rcmdcheck(path = "tests/extendrtests", args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")
-        shell: Rscript {0}
-        
-      - name: Upload check results from R integration tests
-        if: failure()
-        uses: actions/upload-artifact@main
-        with:
-          name:  ${{ matrix.config.os }}-R-${{ matrix.config.r }}-rust-${{ matrix.config.rust-version }}
-          path: check
 
 
 # All tests under this job are run with R devel and freshly generated bindings.
@@ -193,10 +146,8 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {os: ubuntu-20.04,   r: 'devel', rust-version: 'stable', rspm: "https://packagemanager.rstudio.com/cran/__linux__/focal/latest"}
-          - {os: macOS-latest,   r: 'devel', rust-version: 'stable'}
-          - {os: windows-latest, r: 'devel', rust-version: 'stable-msvc'}
-
+          - {os: windows-latest, r: 'devel',   rust-version: 'stable-msvc'}
+          - {os: windows-latest, r: 'release', rust-version: 'stable-msvc'}
 
     env:
       R_REMOTES_NO_ERRORS_FROM_WARNINGS: true
@@ -265,56 +216,18 @@ jobs:
               throw "Last exit code $LASTEXITCODE"
             }
           }
-          foreach($target in ($env:BUILD_TARGETS).Split(',')) {
-            echo "::group::Build extendr-engine for $target target"
-            cargo build --manifest-path extendr-engine/Cargo.toml --features tests-all $(if($target -ne 'default') {"--target=$target"} ) 
-            echo "::endgroup::"
-
-            if (!$?) { 
-              echo "::error::Build extendr-engine for $target target" ;
-              throw "Last exit code $LASTEXITCODE"
-            }
-          }
 
       - name: Run tests
         run: |
           foreach($target in ($env:BUILD_TARGETS).Split(',')) {
-            echo "::group::Test extendr-engine \w tests-all for $target target"
-            cargo test --manifest-path extendr-engine/Cargo.toml --features tests-all $(if($target -ne 'default') {"--target=$target"} ) -- --nocapture 
-            echo "::endgroup::"
+            foreach($i in 1..1000) {
+              echo "::group::Test extendr-api \w tests-all for $target target (attempt $i)"
+              cargo test --manifest-path extendr-api/Cargo.toml --features tests-all $(if($target -ne 'default') {"--target=$target"} ) -- --nocapture 
+              echo "::endgroup::"
 
-            if (!$?) { 
-              echo "::error::Test extendr-engine \w tests-all for $target target" ;
-              throw "Last exit code $LASTEXITCODE"
-            }
-          }
-          foreach($target in ($env:BUILD_TARGETS).Split(',')) {
-            echo "::group::Test extendr-api \w tests-all for $target target"
-            cargo test --manifest-path extendr-api/Cargo.toml --features tests-all $(if($target -ne 'default') {"--target=$target"} ) -- --nocapture 
-            echo "::endgroup::"
-
-            if (!$?) { 
-              echo "::error::Test extendr-api \w tests-all for $target target" ;
-              throw "Last exit code $LASTEXITCODE"
-            }
-          }
-          foreach($target in ($env:BUILD_TARGETS).Split(',')) {            
-            echo "::group::Test extendr-api \w tests-minimal for $target target"
-            cargo test --manifest-path extendr-api/Cargo.toml --features tests-minimal $(if($target -ne 'default') {"--target=$target"} ) -- --nocapture
-            echo "::endgroup::"
-
-            if (!$?) { 
-              echo "::error::Test extendr-api \w tests-minimal for $target target" ;
-              throw "Last exit code $LASTEXITCODE"
-            }
-          }
-          foreach($target in ($env:BUILD_TARGETS).Split(',')) {
-            echo "::group::Test extendr-macros for $target target"
-            cargo test --manifest-path extendr-macros/Cargo.toml  $(if($target -ne 'default') {"--target=$target"} ) -- --nocapture
-            echo "::endgroup::"
-
-            if (!$?) { 
-              echo "::error::Test extendr-macros for $target target" ;
-              throw "Last exit code $LASTEXITCODE"
+              if (!$?) { 
+                echo "::error::Test extendr-api \w tests-all for $target target" ;
+                throw "Last exit code $LASTEXITCODE"
+              }
             }
           }
