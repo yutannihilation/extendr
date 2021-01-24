@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - tmp
   pull_request:
     branches:
       - main
